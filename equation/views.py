@@ -19,7 +19,7 @@ class EquationView(APIView):
     def post(self, request):
         
         x1, x2,x3 = sym.symbols('x1 x2 x3')
-
+        print(request.data.get('eps'))
         symbols1 = [x1,x2]
         f1 = sym.sympify(request.data.get('function'))
         f2= [];
