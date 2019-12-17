@@ -11,7 +11,7 @@ from sympy.parsing.sympy_parser import parse_expr
 # Create your views here.
 
 from .models import Equation
-
+eps = 10**-4;
 class EquationView(APIView):
     def get(self, request):
         equations = serializers.serialize("json",Equation.objects.all(),fields=('id','equation', 'result'))
@@ -19,7 +19,8 @@ class EquationView(APIView):
     def post(self, request):
         
         x1, x2,x3 = sym.symbols('x1 x2 x3')
-        print(request.data.get('eps'))
+        eps = request.data.get('eps')
+        method = request.data.get('method')
         symbols1 = [x1,x2]
         f1 = sym.sympify(request.data.get('function'))
         f2= [];
@@ -40,12 +41,21 @@ class EquationView(APIView):
         f1=sym.Array(f2)
         g1=sym.Array(g2)
         h1=sym.Array(h2)
+        # return Response({"dsadas":  "json", "result": str(f1),"result1": str(g1),"result2": str(h1)})
+
         x0=sym.Matrix(x01)
         xm1=sym.Matrix(xm11)
-        result = twoStepMethod1(f1,g1,h1, symbols1,x0,xm1)
+        result = 0;
+        if method == 'oneStep':
+            result = twoStepMethod2(f1,g1,h1, symbols1,x0,xm1)
+        elif method == 'twoStep':
+            result = twoStepMethod1(f1,g1,h1, symbols1,x0,xm1)
+        elif method == 'chords':
+            result = twoStepMethod3(f1,g1,h1, symbols1,x0,xm1)
+        elif method == 'kurchatova':
+            result = twoStepMethod4(f1,g1,h1, symbols1,x0,xm1)
         return Response({"dsadas":  "json", "result": str(result)})
 
-eps = 10**-4
 
 def Jacobian(v_str, f_list, x):
     array = {}
@@ -99,6 +109,7 @@ def calculateFunc(funcs, subs):
     return resArray;
         
     
+#two-step
 def twoStepMethod1(f, g, h, s, x0, y0):
     x = x0;
     y = y0;
@@ -111,17 +122,13 @@ def twoStepMethod1(f, g, h, s, x0, y0):
         for a in range(len(x)):
             subX["x"+str(a+1)] = x[a];
         An = (Jacobian(s, f, (x + y)/2) + dividedDifferences(x,y,g));
-        print('test',An.inv())
-        print('test1',calculateFunc(f,subX))
-        print('test2',calculateFunc(g,subX))
-        print('test3', x)
-        print('test4', An.inv()*(calculateFunc(f,subX) + calculateFunc(g, subX)))
         x = x - An.inv()*(calculateFunc(f,subX) + calculateFunc(g, subX));
         for a in range(len(x)):
             subY["x"+str(a+1)] = x[a];
         y = x-An.inv()*(calculateFunc(f,subY) + calculateFunc(g, subY))
     return x;
 
+#oneStep
 def twoStepMethod2(f, g, h, s, x0, y0):
     x = x0;
     y = y0;
@@ -136,7 +143,9 @@ def twoStepMethod2(f, g, h, s, x0, y0):
         x = x - An.inv()*(calculateFunc(f,subX) + calculateFunc(g, subX)); 
     print(x,' iterations = ', iterations)
     print()
-     
+
+
+#chords 
 def twoStepMethod3(f, g, h, s, x0, y0):
     x = x0;
     xn1 = y0;
@@ -157,6 +166,7 @@ def twoStepMethod3(f, g, h, s, x0, y0):
     print(x,' iterations = ', iterations)
     print()
     
+#kurchatova
 def twoStepMethod4(f, g, h, s, x0, y0):
     x = x0;
     xn1 = y0;
