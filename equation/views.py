@@ -8,10 +8,15 @@ import  numpy as np
 import sympy as sym
 from django.shortcuts import render
 from sympy.parsing.sympy_parser import parse_expr
-# Create your views here.
+import logging
+
+# Get an instance of a logger
+logger = logging.getLogger(__name__)# Create your views here.
 
 from .models import Equation
 eps = 10**-4;
+iterations = 1;
+
 class EquationView(APIView):
     def get(self, request):
         equations = serializers.serialize("json",Equation.objects.all(),fields=('id','equation', 'result'))
@@ -19,14 +24,19 @@ class EquationView(APIView):
     def post(self, request):
         
         x1, x2,x3 = sym.symbols('x1 x2 x3')
-        eps = request.data.get('eps')
+        globals()['eps'] = float(request.data.get('eps'))
         method = request.data.get('method')
-        symbols1 = [x1,x2]
+        symbols1 = [x1]
         f1 = sym.sympify(request.data.get('function'))
         f2= [];
         g1 = sym.sympify(request.data.get('gFunction'))
         g2=  []
         h2 = []
+        if len(f1) > 1:
+            symbols1.append(x2);
+            
+        if len(f1) > 2:
+            symbols1.append(x3);
         x0 = sym.sympify(request.data.get('x0'))
         xm1 = sym.sympify(request.data.get('xm1'))
         x01 = []
@@ -48,13 +58,21 @@ class EquationView(APIView):
         result = 0;
         if method == 'oneStep':
             result = twoStepMethod2(f1,g1,h1, symbols1,x0,xm1)
+            print('ccccc',result);
         elif method == 'twoStep':
             result = twoStepMethod1(f1,g1,h1, symbols1,x0,xm1)
+            print('dddddd',result);
         elif method == 'chords':
             result = twoStepMethod3(f1,g1,h1, symbols1,x0,xm1)
+            print('aaa',result);
         elif method == 'kurchatova':
             result = twoStepMethod4(f1,g1,h1, symbols1,x0,xm1)
-        return Response({"dsadas":  "json", "result": str(result), "eps": eps, "method": method})
+            print('ddddd',result);
+
+        res = [];
+        for x in range(len(result)):
+            res.append(result[x])
+        return Response({ "result": str(res), "eps": globals()['eps'], "method": method, "iterations": iterations})
 
 
 def Jacobian(v_str, f_list, x):
@@ -126,6 +144,7 @@ def twoStepMethod1(f, g, h, s, x0, y0):
         for a in range(len(x)):
             subY["x"+str(a+1)] = x[a];
         y = x-An.inv()*(calculateFunc(f,subY) + calculateFunc(g, subY))
+    globals()['iterations'] = iterations;
     return x;
 
 #oneStep
@@ -133,6 +152,8 @@ def twoStepMethod2(f, g, h, s, x0, y0):
     x = x0;
     y = y0;
     iterations = 0;
+    print('dddddddddddd',eps);
+
     while(checkResult(h, x)):
         iterations = iterations + 1
         subX = {}        
@@ -141,8 +162,8 @@ def twoStepMethod2(f, g, h, s, x0, y0):
             subX["x"+str(a+1)] = x[a];
         An = Jacobian(s, f, x);
         x = x - An.inv()*(calculateFunc(f,subX) + calculateFunc(g, subX)); 
-    print(x,' iterations = ', iterations)
-    print()
+    globals()['iterations'] = iterations;
+    return x;
 
 
 #chords 
@@ -163,12 +184,13 @@ def twoStepMethod3(f, g, h, s, x0, y0):
         
         for a in range(len(x)):
             subY["x"+str(a+1)] = x[a];
-    print(x,' iterations = ', iterations)
-    print()
+    globals()['iterations'] = iterations;
+    return x;
     
 #kurchatova
 def twoStepMethod4(f, g, h, s, x0, y0):
     x = x0;
+    print('dddddddddddd',eps);
     xn1 = y0;
     iterations = 0;
     while(checkResult(h, x)):
@@ -184,5 +206,5 @@ def twoStepMethod4(f, g, h, s, x0, y0):
         
         for a in range(len(x)):
             subY["x"+str(a+1)] = x[a];
-    print(x,' iterations = ', iterations)
-    print()
+    globals()['iterations'] = iterations;
+    return x;
