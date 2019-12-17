@@ -54,7 +54,7 @@ class EquationView(APIView):
             result = twoStepMethod3(f1,g1,h1, symbols1,x0,xm1)
         elif method == 'kurchatova':
             result = twoStepMethod4(f1,g1,h1, symbols1,x0,xm1)
-        return Response({"dsadas":  "json", "result": str(result)})
+        return Response({"dsadas":  "json", "result": str(result), "eps": eps, "method": method})
 
 
 def Jacobian(v_str, f_list, x):
